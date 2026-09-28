@@ -1,0 +1,48 @@
+name: build and test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: dotnet --info
+        run: dotnet --info
+
+      - name: Build
+        run: dotnet build --configuration Release
+
+      - name: Test
+        run: dotnet test --configuration Release --no-build --logger "console;verbosity=normal"
+
+      # The README makes four claims about the sample batches. Check them here
+      # rather than asking anyone to take them on trust.
+      - name: The sample batches settle, or refuse, as documented
+        run: |
+          set +e
+          run () {
+            dotnet run --project src/ChequeBatch.Cli --configuration Release --no-build -- \
+              "sample/$1" --date 2026-06-30
+            actual=$?
+            if [ "$actual" -ne "$2" ]; then
+              echo "::error::sample/$1 exited $actual, expected $2"
+              exit 1
+            fi
+            echo "sample/$1 exited $actual as expected"
+            echo
+          }
+          run clean-batch.txt 0
+          run mixed-batch.txt 0
+          run short-batch.txt 1
+          run torn-batch.txt 1
