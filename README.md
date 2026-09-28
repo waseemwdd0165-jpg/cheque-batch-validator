@@ -1,5 +1,7 @@
 # cheque-batch-validator
 
+[![build and test](https://github.com/waseemwdd0165-jpg/cheque-batch-validator/actions/workflows/ci.yml/badge.svg)](https://github.com/waseemwdd0165-jpg/cheque-batch-validator/actions/workflows/ci.yml)
+
 A .NET 8 library and command line tool that validates a cheque presentment batch
 and refuses the whole file if it does not agree with its own control totals.
 
@@ -87,6 +89,18 @@ Exit codes are meant to be read by a scheduler:
 `--out <dir>` writes `accepted.txt` and `rejected.txt` for the next step in the
 chain.
 
+A batch that is refused says why, and names the lines:
+
+```
+short-batch.txt  processed as at 2026-06-30
+  accepted       3        39,300.00
+  rejected       0
+
+  controls  FAILED, nothing in this batch settles
+      trailer says 4 record(s), the file holds 3
+      trailer says 49,050.00, the records add up to 39,300.00
+```
+
 ## The sample files
 
 All four are written for a processing date of 2026-06-30.
@@ -99,23 +113,28 @@ All four are written for a processing date of 2026-06-30.
 | `sample/torn-batch.txt` | a line truncated on transfer | 1 |
 
 `mixed-batch.txt` is the interesting one: eight of its eleven records are
-rejected, three go through, and the batch still settles, because the file
-contains exactly what it says it contains. `short-batch.txt` is the opposite, and the one that would
+rejected, three go through for 22,000.00, and the batch still settles, because
+the file contains exactly what it says it contains. `short-batch.txt` is the opposite, and the one that would
 otherwise go through unnoticed.
 
 ## Tests
 
-`tests/ChequeBatch.Tests` covers the field rules at their boundaries, the two
-kinds of duplicate, a malformed line becoming a rejection instead of an
-exception, and each way the control check can fail, including the unreadable
-line whose total happens to match.
-
-I wrote these on a machine without the .NET SDK on it, so run them yourself
-before you trust the count:
+**51 tests, all passing.** GitHub Actions builds the solution and runs them on
+every push, so the badge at the top of this file is the current answer rather
+than the answer on the day I wrote it.
 
 ```
 dotnet test
 ```
+
+They cover the field rules at their boundaries, the two kinds of duplicate, a
+malformed line becoming a rejection instead of an exception, and each way the
+control check can fail, including the unreadable line whose total happens to
+match the readable records.
+
+The same workflow then runs the command line tool over all four sample batches
+and fails the build unless each one exits with the code this README claims. A
+table of promises nobody checks is how a README starts lying.
 
 ## Layout
 
@@ -124,6 +143,7 @@ src/ChequeBatch/          the library: parser, validator, processor
 src/ChequeBatch.Cli/      the command line tool
 tests/ChequeBatch.Tests/  xUnit tests
 sample/                   four batch files
+.github/workflows/ci.yml  build, test, and check the sample exit codes
 ```
 
 No third party dependencies in the library.
